@@ -122,13 +122,11 @@ COMMAND=$2
                 continue
             }
 
-            [ -z "$SEQ" ] && {
-                echo "Sequence not set" 1>&2
-                continue
-            }
 
             # Anything after this should have our sequence number
-            [ "${raw:8:4}" = "$SEQ" ] || {
+            [ -z "$SEQ" ] && {
+                echo "Sequence not set" 1>&2
+            } || [ "${raw:8:4}" = "$SEQ" ] || {
                 echo "Sequence mismatch ${raw:8:4} $SEQ" 1>&2
                 # continue
             }
