@@ -102,7 +102,7 @@ COMMAND=$2
         send_command $COMMAND
 
         SEQ=""
-        while read -r -t 5 -s raw; do
+        while read -r -t 1 -s raw; do
             # Check for header
             [ "${raw:0:4}" = "$(echo -ne "\x05\x05\x03\x03")" ] || {
                 # echo "Missing header" 1>&2
