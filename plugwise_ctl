@@ -113,7 +113,7 @@ COMMAND=$2
             # Check CRC of incoming packet
             [ "${raw:${#raw} - 5:4}" = "$(crc ${raw:4:${#raw} - 9})" ] || {
                 echo "CRC mismatch" 1>&2
-                # continue
+                continue
             }
 
             # Confirmation packet from stick: 0000 001A 00C1 A6CB
