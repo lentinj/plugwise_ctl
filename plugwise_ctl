@@ -58,7 +58,7 @@ function crc() {
         CRC=$(( ${CRC_TBL[$CHR ^ ($CRC >> 8 & 0xFFFF)]} ^ ($CRC << 8 & 0xFFFF) ))
         i=$(( i+1 ))
     done
-    printf '%X' $CRC
+    printf '%04X' $CRC
 }
 
 function send_command() {
