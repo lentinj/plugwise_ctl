@@ -85,13 +85,9 @@ function send_command() {
 }
 
 function usage() {
-    echo Usage: "$0 (circle) (on|off|usage|info)" 1>&2
+    echo Usage: "$0 (circle) (on|off|toggle|usage|info)" 1>&2
     exit 1
 }
-
-# Set up serial port
-PORT=/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A2003FCu-if00-port0
-stty --file $PORT cs8 -cstopb -crtscts -ixon -ixoff -ignpar cread 115200
 
 # Choose circle
 CIRCLE=$1
@@ -100,6 +96,15 @@ CIRCLE=$1
 # Choose command
 COMMAND=$2
 [ -n "$COMMAND" ] || usage
+[ "$COMMAND" == "toggle" ] && {
+    STATE="$($0 $CIRCLE info | awk '/^Power state/ { print $3 }')"
+    [ "$STATE" = "01" ] && COMMAND=off || COMMAND=on
+    exec $0 $CIRCLE $COMMAND
+}
+
+# Set up serial port
+PORT=/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A2003FCu-if00-port0
+stty --file $PORT cs8 -cstopb -crtscts -ixon -ixoff -ignpar cread 115200
 
 (
     for attempt in 1 2 3; do
