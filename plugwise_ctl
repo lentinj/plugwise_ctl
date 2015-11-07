@@ -17,6 +17,10 @@ export LC_CTYPE=C
 export LC_ALL=C # Force a non UTF-8 Lang to load (prevent multibyte characters)
 IFS=''          # Stop read treating " " as a field separator
 
+function log() {
+    [ -n "$verbose" ] && echo "$@" 1>&2
+}
+
 CRC_TBL=(0x0000 0x1021 0x2042 0x3063 0x4084 0x50a5 0x60c6 0x70e7
          0x8108 0x9129 0xa14a 0xb16b 0xc18c 0xd1ad 0xe1ce 0xf1ef
          0x1231 0x0210 0x3273 0x2252 0x52b5 0x4294 0x72f7 0x62d6
@@ -72,7 +76,7 @@ function send_command() {
             echo "Unknown command" 1>&2
             exit 1
         }
-        echo Sending $DATA 1>&2
+        log Sending $DATA
 
         # Wait for main thread to be ready before issuing command
         sleep 0.1s
@@ -105,14 +109,14 @@ COMMAND=$2
         while read -r -t 1 -s raw; do
             # Check for header
             [ "${raw:0:4}" = "$(echo -ne "\x05\x05\x03\x03")" ] || {
-                # echo "Missing header" 1>&2
+                # log "Missing header"
                 continue
             }
-            echo "Received $raw" 1>&2
+            log "Received $raw"
 
             # Check CRC of incoming packet
             [ "${raw:${#raw} - 5:4}" = "$(crc ${raw:4:${#raw} - 9})" ] || {
-                echo "CRC mismatch" 1>&2
+                log "CRC mismatch"
                 continue
             }
 
@@ -125,9 +129,9 @@ COMMAND=$2
 
             # Anything after this should have our sequence number
             [ -z "$SEQ" ] && {
-                echo "Sequence not set" 1>&2
+                log "Sequence not set"
             } || [ "${raw:8:4}" = "$SEQ" ] || {
-                echo "Sequence mismatch ${raw:8:4} $SEQ" 1>&2
+                log "Sequence mismatch ${raw:8:4} $SEQ"
                 # continue
             }
 
@@ -137,7 +141,7 @@ COMMAND=$2
                 [ "${raw:12:4}" = "00D8" ] && STATUS="on"
                 [ "${raw:12:4}" = "00DE" ] && STATUS="off"
                 [ -n "$STATUS" ] || {
-                    echo "Unknown status ${raw:12:4}" 1>&2
+                    log "Unknown status ${raw:12:4}"
                     exit 1
                 }
 
