@@ -73,6 +73,7 @@ function send_command() {
         [ "$1" = "usage" ] && DATA="0012${CIRCLE}"
         [ "$1" = "info" ] && DATA="0023${CIRCLE}"
         [ "$1" = "calibration" ] && DATA="0026${CIRCLE}"
+        [ "$1" = "listslot" ] && DATA="0018${CIRCLE}${SLOT}"
         [ -n "$DATA" ] || {
             echo "Unknown command" 1>&2
             exit 1
@@ -86,7 +87,7 @@ function send_command() {
 }
 
 function usage() {
-    echo Usage: "$0 (init|on|off|toggle|usage|info) (circle)" 1>&2
+    echo Usage: "$0 ((init|list) | (|on|off|toggle|usage|info) (circle))" 1>&2
     echo $1 1>&2
     exit 1
 }
@@ -105,6 +106,14 @@ elif [ "$COMMAND" = "toggle" ]; then
     STATE="$($0 info $CIRCLE | awk '/^Power state/ { print $3 }')"
     [ "$STATE" = "01" ] && COMMAND=off || COMMAND=on
     exec $0 -v $COMMAND $CIRCLE
+elif [ "$COMMAND" = "list" ]; then
+    CIRCLEPLUS="$($0 init | awk '/^Extended PAN ID/ { print $4 }')"
+    echo "Circle+: ${CIRCLEPLUS}"
+    IFS=':'
+    for i in `seq -s: 0x0 0x3F`; do
+        $0 listslot $CIRCLEPLUS $(printf '%02X' $i)
+    done
+    exit 0
 else
     # Rest of the commands do
     CIRCLE=$2
@@ -203,6 +212,12 @@ stty --file $PORT cs8 -cstopb -crtscts -ixon -ixoff -ignpar cread 115200
                 echo "gainb: ${raw:36:8}"
                 echo "offtot: ${raw:44:8}"
                 echo "offruis: ${raw:52:8}"
+                exit 0
+            }
+
+            # Circle slot content: 0019 1C96 000D6F000076A11D 000D6F000076AC8E 02 0B3F
+            [ "${raw:4:4}" = "0019" -a "${raw:12:16}" = "$CIRCLE" ] && {
+                echo "Slot ${raw:44:2}: ${raw:28:16}"
                 exit 0
             }
 
