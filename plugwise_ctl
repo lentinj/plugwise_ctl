@@ -117,17 +117,19 @@ PORT=/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A2003FCu-if00-port0
 stty --file $PORT cs8 -cstopb -crtscts -ixon -ixoff -ignpar cread 115200
 
 (
-    for attempt in 1 2 3; do
+    for attempt in 1; do
         send_command $COMMAND
 
         SEQ=""
-        while read -r -t 1 -s raw; do
-            # Check for header
+        while read -r -t 3 -s raw; do
+            # Remove everything up until header
+            raw="$(echo $raw | sed 's/^.*\x05\x05\x03\x03/\x05\x05\x03\x03/')"
+
+            # Everything should have 05050303 at start
             [ "${raw:0:4}" = "$(echo -ne "\x05\x05\x03\x03")" ] || {
-                # log "Missing header"
+                log "Unrecognised message: $raw"
                 continue
             }
-            log "Received $raw"
 
             # Check CRC of incoming packet
             [ "${raw:${#raw} - 5:4}" = "$(crc ${raw:4:${#raw} - 9})" ] || {
@@ -135,12 +137,12 @@ stty --file $PORT cs8 -cstopb -crtscts -ixon -ixoff -ignpar cread 115200
                 continue
             }
 
-            # Confirmation packet from stick: 0000 001A 00C1 A6CB
+            # Stick received command: 0000 001A 00C1 A6CB
             [ -z "$SEQ" -a "${raw:4:4}" = "0000" -a "${raw:12:4}" = "00C1" ] && {
+                log "Transaction sequence ${raw:8:4}"
                 SEQ="${raw:8:4}"
                 continue
             }
-
 
             # Anything after this should have our sequence number
             [ -z "$SEQ" ] && {
@@ -202,6 +204,9 @@ stty --file $PORT cs8 -cstopb -crtscts -ixon -ixoff -ignpar cread 115200
                 echo "offruis: ${raw:52:8}"
                 exit 0
             }
+
+            log "Unhandled response: $raw"
+            exit 1
         done
     done
     echo "All attempts failed!" 1>&2
