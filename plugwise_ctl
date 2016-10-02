@@ -206,6 +206,12 @@ stty --file $PORT cs8 -cstopb -crtscts -ixon -ixoff -ignpar cread 115200
                 exit 0
             }
 
+            # Out of range / some kind of error: 0000 1CFA 00E1 9A80
+            [ "${raw:4:4}" = "0000" -a "${raw:12:4}" = "00E1" ] && {
+                echo "No response from Circle(?)"
+                exit 1
+            }
+
             log "Unhandled response: $raw"
             exit 1
         done
