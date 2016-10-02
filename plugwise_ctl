@@ -173,15 +173,16 @@ stty --file $PORT cs8 -cstopb -crtscts -ixon -ixoff -ignpar cread 115200
                     exit 1
                 }
 
-                [ "$STATUS" = "$2" ] && {
-                    echo "Power: ${STATUS}"
-                    exit 0
-                }
+                echo "Power: ${STATUS}"
+                exit 0
             }
 
             # Current power usage: 000B 0055 000044BE FFFE 5312 000B 0893
             [ "${raw:4:4}" = "0013" -a "${raw:12:16}" = "$CIRCLE" ] && {
-                printf "Usage: %d pulses/sec %d pulses/8secs\n" 0x${raw:28:4} 0x${raw:32:4}
+                # Ghetto signed-int conversion
+                [ "0x${raw:28:4}" = "0xFFFF" ] && OUT1=0 || OUT1=0x${raw:28:4}
+                [ "0x${raw:32:4}" = "0xFFFF" ] && OUT2=0 || OUT2=0x${raw:32:4}
+                printf "Usage: %d pulses/sec %d pulses/8secs\n" $OUT1 $OUT2
                 exit 0
             }
 
