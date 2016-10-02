@@ -67,6 +67,7 @@ function crc() {
 
 function send_command() {
     (
+        [ "$1" = "init"  ] && DATA="000A"
         [ "$1" = "on"    ] && DATA="0017${CIRCLE}01"
         [ "$1" = "off"   ] && DATA="0017${CIRCLE}00"
         [ "$1" = "usage" ] && DATA="0012${CIRCLE}"
@@ -85,22 +86,31 @@ function send_command() {
 }
 
 function usage() {
-    echo Usage: "$0 (circle) (on|off|toggle|usage|info)" 1>&2
+    echo Usage: "$0 (init|on|off|toggle|usage|info) (circle)" 1>&2
+    echo $1 1>&2
     exit 1
 }
 
-# Choose circle
-CIRCLE=$1
-[ "${CIRCLE:0:4}" == "000D" ] || usage
-
 # Choose command
-COMMAND=$2
-[ -n "$COMMAND" ] || usage
-[ "$COMMAND" == "toggle" ] && {
-    STATE="$($0 $CIRCLE info | awk '/^Power state/ { print $3 }')"
+COMMAND=$1
+if [ -z "COMMAND" ]; then
+    usage
+elif [ "$COMMAND" = "init" ]; then
+    # These commands don't need a circle
+    true
+elif [ "$COMMAND" = "toggle" ]; then
+    CIRCLE=$2
+    [ "${CIRCLE:0:4}" = "000D" ] || usage
+
+    STATE="$($0 info $CIRCLE | awk '/^Power state/ { print $3 }')"
     [ "$STATE" = "01" ] && COMMAND=off || COMMAND=on
-    exec $0 $CIRCLE $COMMAND
-}
+    exec $0 -v $COMMAND $CIRCLE
+else
+    # Rest of the commands do
+    CIRCLE=$2
+    SLOT=$3
+    [ "${CIRCLE:0:4}" = "000D" ] || usage
+fi
 
 # Set up serial port
 PORT=/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A2003FCu-if00-port0
@@ -138,6 +148,17 @@ stty --file $PORT cs8 -cstopb -crtscts -ixon -ixoff -ignpar cread 115200
             } || [ "${raw:8:4}" = "$SEQ" ] || {
                 log "Sequence mismatch ${raw:8:4} $SEQ"
                 # continue
+            }
+
+            # Init command response
+            [ "${raw:4:4}" = "0011" ] && {
+                # 0011 0016 000D6F0000769B94 01 01 AC0D6F000076A11D C3AC FF 1518
+                echo "Stick MAC: ${raw:12:16}"
+                echo "Joined: ${raw:28:2}"
+                echo "Connected: ${raw:30:2}"
+                echo "Extended PAN ID: ${raw:32:16}"
+                echo "PAN ID: ${raw:48:4}"
+                exit 0
             }
 
             # Power command response: 0000 0017 00D8 000D6F00007698F1 1032
