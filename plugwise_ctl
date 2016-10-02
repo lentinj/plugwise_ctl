@@ -126,7 +126,7 @@ PORT=/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A2003FCu-if00-port0
 stty --file $PORT cs8 -cstopb -crtscts -ixon -ixoff -ignpar cread 115200
 
 (
-    for attempt in 1; do
+    for attempt in 1 2 3; do
         send_command $COMMAND
 
         SEQ=""
@@ -224,7 +224,7 @@ stty --file $PORT cs8 -cstopb -crtscts -ixon -ixoff -ignpar cread 115200
             # Out of range / some kind of error: 0000 1CFA 00E1 9A80
             [ "${raw:4:4}" = "0000" -a "${raw:12:4}" = "00E1" ] && {
                 echo "No response from Circle(?)"
-                exit 1
+                continue 2
             }
 
             log "Unhandled response: $raw"
